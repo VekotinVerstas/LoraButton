@@ -25,13 +25,15 @@ DHT dht(DHTPIN, DHTTYPE);
 #endif
 
 #define LEDPIN 2  // Used to blink blue led and to signal watchtog chip that all is well - while sending data
-#define BUTTON1 0
+#define BUTTON1 34
 
 uint8_t button_status = 0;
 
 int wt = 0;
 const int wdtTimeout = 12000;  //time in ms to trigger the watchdog
 hw_timer_t *timer = NULL;
+int minSendDelay=10000;
+int minSendCounter=0;
 
 HardwareSerial sensor(1);
 
@@ -63,7 +65,7 @@ void setup() {
 
   bmestart(13, 15);
   sprintf(s_id, "ESP_%02X", BOXNUM);
-  Serial.print("Co2TTGO name: ");
+  Serial.print("LoraButton name: ");
   Serial.println(s_id);
 
   Serial.print("Co2TTGO version: ");
@@ -114,12 +116,13 @@ void setup() {
 
 void loop() {
   os_runloop_once();
-  if ( button_status != digitalRead(BUTTON1) ) {
-    button_status = digitalRead(BUTTON1);
-    Serial.print("Napin tila: " );
-    Serial.println( button_status );
-    do_send(&sendjob);
-  }
+
+  if ((millis()-minSendCounter > minSendDelay ) and digitalRead(BUTTON1) == LOW) {
+    Serial.print("Button pressed. Sending request to server at ");
+    Serial.println( millis()/1000.00 );
+    minSendCounter=millis();
+    do_send(&sendjob);        
+    }
 }
 
 /*static bool exchange_command(uint8_t cmd, uint8_t data[], int timeout) {
@@ -237,6 +240,7 @@ void do_send(osjob_t* j) {
   JsonObject& data = root.createNestedObject("data");
 //  data["co2"] = co2;
 //  data["temp1"] = temp;
+  data["button"] = 1;
   data["temp"] = Temp;
   data["hum"] = hum;
 
