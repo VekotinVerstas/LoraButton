@@ -4,7 +4,7 @@
  * This uses https://github.com/VekotinVerstas/arduino-lmic as lora library. Install it to your arduino/library first.
  */
  
-#include "mhz19.h"
+//#include "mhz19.h"
 #include <ArduinoJson.h>
 #include <Wire.h>
 #include <SPI.h>
@@ -25,6 +25,9 @@ DHT dht(DHTPIN, DHTTYPE);
 #endif
 
 #define LEDPIN 2  // Used to blink blue led and to signal watchtog chip that all is well - while sending data
+#define BUTTON1 1
+
+uint8_t button_status = 0;
 
 int wt = 0;
 const int wdtTimeout = 12000;  //time in ms to trigger the watchdog
@@ -48,8 +51,7 @@ void IRAM_ATTR resetModule() {
 }
 
 void setup() {
-  Serial.begin(115200);
-  
+  Serial.begin(115200);  
   timer = timerBegin(0, 8000, true);                  //timer 0, div 80
   timerAttachInterrupt(timer, &resetModule, true);  //attach callback
   timerAlarmWrite(timer, wdtTimeout * 1000, false); //set time in us
@@ -77,7 +79,7 @@ void setup() {
   Serial.printf("LORA dev eui: %01X%01X%01X%01X%01X%01X%01X%01X\n", DEVEUI[0], DEVEUI[1], DEVEUI[2], DEVEUI[3], DEVEUI[4], DEVEUI[5], DEVEUI[6], DEVEUI[7]);
   // Use the Blue pin to signal transmission.
   pinMode(LEDPIN, OUTPUT);
-  
+  pinMode(BUTTON1, INPUT_PULLUP);        // sets the digital pin as input
   // LMIC init
   os_init();
 
@@ -112,9 +114,14 @@ void setup() {
 
 void loop() {
   os_runloop_once();
+    if ( button_status != digitalRead(BUTTON1) ) {
+      button_status = digitalRead(BUTTON1);
+      Serial.print("Napin tila: " );
+      Serial.println( button_status );
+    }
 }
 
-static bool exchange_command(uint8_t cmd, uint8_t data[], int timeout) {
+/*static bool exchange_command(uint8_t cmd, uint8_t data[], int timeout) {
   // create command buffer
   uint8_t buf[9];
   int len = prepare_tx(cmd, data, buf, sizeof(buf));
@@ -147,7 +154,7 @@ static bool read_temp_co2(int *co2, int *temp) {
   }
   return result;
 }
-
+*/
 void bmestart(int pin1, int pin2) {
 #ifdef useBME
   Wire.begin(pin1, pin2); //13, 15
@@ -198,6 +205,7 @@ void do_send(osjob_t* j) {
     hum = 0;
   }
 #endif
+/*
 
   if (!read_temp_co2(&co2, &temp)) {
     Serial.println("Co2 read failed.");
@@ -205,12 +213,12 @@ void do_send(osjob_t* j) {
     temp=0;
     //return;
   }
-
+*/
   Serial.println("*****************************************************************");
-  Serial.print("CO2:");
-  Serial.println(co2, DEC);
-  Serial.print("TEMP(CO2-sensori)");
-  Serial.println(temp);
+//  Serial.print("CO2:");
+//  Serial.println(co2, DEC);
+//  Serial.print("TEMP(CO2-sensori)");
+//  Serial.println(temp);
   Serial.print("TEMP: ");
   Serial.println(Temp);
   Serial.print("HUM: ");
@@ -223,12 +231,12 @@ void do_send(osjob_t* j) {
   DynamicJsonBuffer jsonBuffer(200);
   JsonObject& root = jsonBuffer.createObject();
   root["id"] = s_id;
-  root["sensor"] = "BKS";
+  root["sensor"] = "LoraButton";
 
   JsonObject& data = root.createNestedObject("data");
-  data["co2"] = co2;
-  data["temp1"] = temp;
-  data["temp2"] = Temp;
+//  data["co2"] = co2;
+//  data["temp1"] = temp;
+  data["temp"] = Temp;
   data["hum"] = hum;
 
   root.printTo(message);
@@ -259,14 +267,16 @@ void onEvent (ev_t ev) {
       Serial.print(F("Data Received: "));
       Serial.write(LMIC.frame + LMIC.dataBeg, LMIC.dataLen);
       Serial.println();
-
+      
       for ( i = 0 ; i < LMIC.dataLen ; i++ )
         TTN_response[i] = LMIC.frame[LMIC.dataBeg + i];
       TTN_response[i] = 0;
       LMIC.dataLen = 0;
     }
     // Schedule next transmission
-    Serial.println("Schedule next transmission");
+    /*Serial.println("Schedule next transmission");
+    Serial.flush();
     os_setTimedCallback(&sendjob, os_getTime() + sec2osticks(TX_INTERVAL), do_send);
+    */
   }
 }
