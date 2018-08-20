@@ -117,7 +117,7 @@ void setup() {
 void loop() {
   os_runloop_once();
 
-  if ((millis()-minSendCounter > minSendDelay ) and digitalRead(BUTTON1) == LOW) {
+  if ((millis()-minSendCounter > minSendDelay ) and digitalRead(BUTTON1) == HIGH) {
     Serial.print("Button pressed. Sending request to server at ");
     Serial.println( millis()/1000.00 );
     minSendCounter=millis();
