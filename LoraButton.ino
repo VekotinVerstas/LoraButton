@@ -25,7 +25,7 @@ DHT dht(DHTPIN, DHTTYPE);
 #endif
 
 #define LEDPIN 2  // Used to blink blue led and to signal watchtog chip that all is well - while sending data
-#define BUTTON1 1
+#define BUTTON1 0
 
 uint8_t button_status = 0;
 
@@ -109,16 +109,17 @@ void setup() {
   LMIC_setDrTxpow(DR_SF9, 14);
 
   // Start job
-  do_send(&sendjob);
+  //do_send(&sendjob);
 }
 
 void loop() {
   os_runloop_once();
-    if ( button_status != digitalRead(BUTTON1) ) {
-      button_status = digitalRead(BUTTON1);
-      Serial.print("Napin tila: " );
-      Serial.println( button_status );
-    }
+  if ( button_status != digitalRead(BUTTON1) ) {
+    button_status = digitalRead(BUTTON1);
+    Serial.print("Napin tila: " );
+    Serial.println( button_status );
+    do_send(&sendjob);
+  }
 }
 
 /*static bool exchange_command(uint8_t cmd, uint8_t data[], int timeout) {
